@@ -488,7 +488,7 @@ You can contact us and communicate with us by joining our WeChat group:
 
 | WeChat Group |
 |:-------------------------:|
-| <img src="images/wechat_group.jpeg" width="200" height="400"> |
+| <img src="images/wechat_group2.jpeg" width="200"> |
 
 ## ⭐ Star History
 
