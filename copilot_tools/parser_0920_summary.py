@@ -15,7 +15,7 @@ sys.path.append(current_dir)
 if "." not in sys.path:
     sys.path.append(".")
 
-from tools.prompt_tools import messages2sft
+# from tools.prompt_tools import messages2sft
 
 from copy import deepcopy
 
@@ -240,44 +240,36 @@ class Parser0920Summary():
         action_str = f"<THINK> {action['cot']} </THINK>\n" + "\t".join(kvs) + "\n"
         return action_str
     
+
     def str2action(self, command_str):
-        original_command_str = command_str.strip()
+        command_str = command_str.strip()
+        
+        # Normalize THINK tags: fix typos, case, and spacing
+        command_str = (
+            command_str
+            .replace("<TINK>", "<THINK>").replace("</TINK>", "</THINK>")
+            .replace("<think>", "<THINK>").replace("</think>", "</THINK>")
+        )
+        command_str = re.sub(r"<\s*/?THINK\s*>", lambda m: "<THINK>" if "/" not in m.group() else "</THINK>", command_str, flags=re.IGNORECASE)
+        
+        # Extract CoT and key-value parts
+        # Expected format: <THINK> cot </THINK>\nexplain:xxx\taction:xx\tvalue:xxx\tsummary:xxx
+        try:
+            cot_part = command_str.split("<THINK>")[1].split("</THINK>")[0].strip()
+            kv_part = command_str.split("</THINK>")[1].strip()
+        except IndexError:
+            print(f"[Parser Warning] Missing <THINK> tags, treating entire response as kv")
+            kv_part = command_str
+            cot_part = ""
 
-        # === 🔧 Step 0: 修复常见 <THINK> 标签拼写/格式错误 ===
-        # 修复典型 typo: <TINK> → <THINK>
-        command_str = command_str.replace("<TINK>", "<THINK>").replace("</TINK>", "</THINK>")
-        # 修复大小写: <think> → <THINK>
-        command_str = re.sub(r"</?think>", lambda m: m.group(0).upper(), command_str, flags=re.IGNORECASE)
-        # 修复带空格: < THINK > → <THINK>
-        command_str = re.sub(r"<\s*THINK\s*>", "<THINK>", command_str, flags=re.IGNORECASE)
-        command_str = re.sub(r"</\s*THINK\s*>", "</THINK>", command_str, flags=re.IGNORECASE)
-
-        # === Step 1: 尝试提取 <THINK> ... </THINK> ===
-        if "<THINK>" in command_str and "</THINK>" in command_str:
-            try:
-                cot_part = command_str.split("<THINK>", 1)[1].split("</THINK>", 1)[0].strip()
-                kv_part = command_str.split("</THINK>", 1)[1].strip()
-            except Exception as e:
-                print(f"[Parser Warning] Failed to split THINK tags: {e}. Using full response as CoT.")
-                cot_part = original_command_str
-                kv_part = ""
-        else:
-            # 没有 THINK 标签：全部视为 cot，kv 部分为空
-            print(f"[Parser Warning] Missing or unrecognizable <THINK> tags. Using full response as CoT.")
-            cot_part = original_command_str
-            kv_part = ""
-
-        # === Step 2: 解析键值对 ===
         action = OrderedDict()
         action['cot'] = cot_part
+        
+        # FIX:issue 13
+        # Error split by \n, should split by tab separator 
+        kvs = [kv.strip() for kv in kv_part.split("\t") if kv.strip()]
 
-        # 按行或按 \t 分割？优先按换行，再 fallback 到 \t
-        if "\n" in kv_part:
-            lines = [line.strip() for line in kv_part.split("\n") if line.strip()]
-        else:
-            lines = [kv.strip() for kv in kv_part.split("\t") if kv.strip()]
-
-        for kv in lines:
+        for kv in kvs:
             if ":" not in kv:
                 continue
 
@@ -289,18 +281,21 @@ class Parser0920Summary():
             elif key == "summary":
                 action['summary'] = value
             elif "point" in key:
-                point_str = value
-                if "," not in point_str:
-                    print(f"[Parser Warning] Invalid point format: {point_str}, skipping.")
-                    continue
+                # Parse point format: "x,y" or "x y"
                 try:
-                    x_str, y_str = point_str.split(",", 1)
-                    x = int(x_str.strip())
-                    y = int(y_str.strip())
+                    # Replace comma with space for unified processing
+                    coords = value.replace(",", " ").split()
+                    if len(coords) < 2:
+                        raise ValueError(f"Expected 2 coordinates, got {len(coords)}")
+                    
+                    x, y = int(coords[0]), int(coords[1])
                     action[key] = [x, y]
-                except (ValueError, IndexError):
-                    print(f"[Parser Warning] Failed to parse point: {point_str}, skipping.")
-                    continue
+                    
+                except (ValueError, IndexError) as e:
+                    raise ValueError(
+                        f"[Parser Error] Failed to parse point '{value}' for key '{key}': {str(e)}. "
+                        f"Expected format: 'x,y' or 'x y' with integer values"
+                    ) from e
             else:
                 action[key] = value
 
@@ -422,7 +417,17 @@ def tkj_action_transformer(action, width: int, height: int):
 
 
 if __name__ == "__main__":
-
-
+    # test_case = [
+    #     "<think>xxx</think>",
+    #     "<think>xxx</think>\nexplain:xxx\taction:xx\tvalue:xxx\tsummary:xxx",
+    #     "<think>xxx</think>\nexplain:xxx\taction:xx\tvalue:xxx\tsummary:xxx",
+    #     "<think>xxx</think>\nexplain:xxx\taction:xx\tvalue:xxx\tsummary:xxx",
+    #     "< think>xxx</think>\nexplain:xxx\taction:xx\tvalue:xxx\tsummary:xxx",
+    #     "</THINK>xxx</THINK>\nexplain:xxx\taction:xx\tvalue:xxx\tsummary:xxx",
+    #     "<THINK>xxx</THINK>\nexplain:xxx\taction:xx\tvalue:xxx\tsummary:xxx",
+    # ]
+    # for command_str in test_case:
+    #     action = str2action(command_str)
+    #     print(f"action: {action}")
     pass
             
