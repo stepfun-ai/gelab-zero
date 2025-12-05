@@ -13,8 +13,6 @@ from copilot_agent_client.pu_client import evaluate_task_on_device
 from copilot_front_end.mobile_action_helper import list_devices, get_device_wm_size
 from copilot_agent_server.local_server import LocalServer
 
-# ... (tmp_server_config 和 local_model_config 配置字典保持不变) ...
-
 tmp_server_config = {
     "log_dir": "running_log/server_log/os-copilot-local-eval-logs/traces",
     "image_dir": "running_log/server_server/os-copilot-local-eval-logs/images",
@@ -57,6 +55,9 @@ JOB_QUEUE = [
 
 # ===== 用于记录每步耗时 =====
 _step_times = []
+
+# 全局字典，用于存储 scrcpy 的实际 PID (而非 Shell/CMD 的 PID)
+scrcpy_pids_to_kill = {} 
 
 
 # ===== 包装 automate_step 方法 =====
@@ -104,8 +105,8 @@ def wait_for_device_stability(target_device_ids, timeout=10, interval=0.5):
     print("所有目标设备已稳定连接。")
     return True
 
-# ===== 【修改】在单个设备上运行任务的封装（新增端口参数和自清理） =====
-def run_task_on_device(device_id, tmp_server_config, task, scrcpy_port):
+# ===== 在单个设备上运行任务的封装（移除线程内清理，仅执行任务） =====
+def run_task_on_device(device_id, tmp_server_config, task):
     global tmp_rollout_config 
     
     l2_server = LocalServer(tmp_server_config)
@@ -126,9 +127,7 @@ def run_task_on_device(device_id, tmp_server_config, task, scrcpy_port):
         print(f"任务执行过程中发生错误 (设备: {device_id}): {e}")
         
     finally:
-        # 【关键修改】任务完成后立即调用清理函数
-        print(f"任务完成，正在断开设备 {device_id} 的 scrcpy 镜像连接 (端口: {scrcpy_port})...")
-        terminate_process_by_port(scrcpy_port)
+        pass
 
 
 # ===== scrcpy 基础路径定义 =====
@@ -163,6 +162,43 @@ def get_scrcpy_path():
 
     return os.path.abspath(path)
 
+# ===== 【新增】获取当前所有 scrcpy 进程的 PID 集合 (跨平台) =====
+def get_scrcpy_pids(scrcpy_path):
+    system = platform.system()
+    pids = set()
+    
+    if system == "Windows":
+        try:
+            # 查找所有名为 scrcpy.exe 的进程
+            result = subprocess.run('tasklist /FI "IMAGENAME eq scrcpy.exe" /NH', capture_output=True, text=True, shell=True, check=False)
+            
+            for line in result.stdout.strip().split('\n'):
+                if line.strip():
+                    parts = line.split()
+                    try:
+                        pids.add(int(parts[1]))
+                    except (ValueError, IndexError):
+                        continue
+        except Exception:
+            pass
+            
+    elif system in ["Darwin", "Linux"]:
+        try:
+            # 查找所有包含 scrcpy 路径的进程
+            result = subprocess.run(f'pgrep -f "{scrcpy_path}"', capture_output=True, text=True, shell=True, check=False)
+            
+            for pid_str in result.stdout.strip().split('\n'):
+                if pid_str.strip():
+                    try:
+                        pids.add(int(pid_str))
+                    except ValueError:
+                        continue
+        except Exception:
+            pass
+            
+    return pids
+
+
 # ===== 通过端口查找并终止 PID (跨平台兼容) =====
 def terminate_process_by_port(port):
     """使用 Windows 的 netstat/taskkill 或 macOS/Linux 的 lsof/kill 终止占用指定端口的进程"""
@@ -181,12 +217,13 @@ def terminate_process_by_port(port):
             
             if pid_match:
                 pid = pid_match.group(1)
-                print(f"    -> 终止 PID {pid} (端口 {port})...")
-                subprocess.run(f"taskkill /PID {pid} /F", shell=True, check=True, capture_output=True)
+                print(f"    -> [保险清理] 终止 PID {pid} (端口 {port})...")
+                # 使用 taskkill /F /T 终止进程树
+                subprocess.run(f"taskkill /PID {pid} /F /T", shell=True, check=False, capture_output=True)
                 return
                 
         except Exception as e:
-            print(f"    -> 终止端口 {port} 失败 (Windows): {e}")
+            print(f"    -> [保险清理] 终止端口 {port} 失败 (Windows): {e}")
             
     elif system in ["Darwin", "Linux"]:
         # macOS/Linux 逻辑 (使用 lsof 和 kill)
@@ -201,12 +238,12 @@ def terminate_process_by_port(port):
             
             if pid_match:
                 pid = pid_match.group(1)
-                print(f"    -> 终止 PID {pid} (端口 {port})...")
-                subprocess.run(f"kill -9 {pid}", shell=True, check=True, capture_output=True)
+                print(f"    -> [保险清理] 终止 PID {pid} (端口 {port})...")
+                subprocess.run(f"kill -9 {pid}", shell=True, check=False, capture_output=True)
                 return
                 
         except Exception as e:
-            print(f"    -> 终止端口 {port} 失败 (macOS/Linux): {e}")
+            print(f"    -> [保险清理] 终止端口 {port} 失败 (macOS/Linux): {e}")
         
 # =============================================================
 
@@ -218,11 +255,9 @@ if __name__ == "__main__":
         sys.exit(1)
         
     
-    # 【新增】构建动态设备能力映射，并获取需要启动 scrcpy 的设备列表
-    # (确保只有配置中有的设备才会被启动 scrcpy 和分配任务)
+    # 构建动态设备能力映射，并获取需要启动 scrcpy 的设备列表
     devices_to_start_scrcpy = []
     
-    # 临时存储配置，用于后续的查找和分配
     temp_device_map = DEVICE_CAPABILITIES.copy()
     DEVICE_CAPABILITIES = {}
     
@@ -235,7 +270,9 @@ if __name__ == "__main__":
         devices_to_start_scrcpy.append(all_device_ids[1])
         
     
-    scrcpy_ports = {} # 【修改】使用字典存储 device_id -> port
+    scrcpy_ports = {} 
+    # 使用全局的 scrcpy_pids_to_kill 字典
+    
     total_start = time.time()
     task_threads = [] 
     
@@ -252,6 +289,9 @@ if __name__ == "__main__":
         # 3. 循环启动所有设备的 scrcpy 进程
         print(f"检测到 {len(devices_to_start_scrcpy)} 个配置的设备，正在启动 scrcpy 窗口...")
         
+        #在启动前记录所有 scrcpy 进程的 PID
+        initial_scrcpy_pids = get_scrcpy_pids(SCRCPY_PATH)
+        
         start_port = 27183 
         offset_y = 50 
         OFFSET_STEP = 65 
@@ -264,25 +304,41 @@ if __name__ == "__main__":
             command_args = f'"{SCRCPY_PATH}" -s {device_id} {port_arg} {window_position_arg}'
             
             if system == "Windows":
+                # 使用 start "" 来分离子进程
                 scrcpy_command_str = f'start "" {command_args}'
             else:
+                # 使用 nohup ... & 来分离子进程
                 scrcpy_command_str = f'nohup {command_args} > /dev/null 2>&1 &' 
             
+            # 启动 Shell/CMD 进程
             subprocess.Popen(
                 scrcpy_command_str,
                 shell=True,             
             )
             
-            # 【修改】存储 device_id 对应的 port
-            scrcpy_ports[device_id] = start_port
+            # 等待 scrcpy 窗口启动，并找到其真实的 PID
+            time.sleep(1.5) # 给予 scrcpy 足够的启动时间
             
-            print(f"设备 {device_id} 的 scrcpy 进程已启动 (端口: {start_port})...")
+            current_scrcpy_pids = get_scrcpy_pids(SCRCPY_PATH)
+            new_pids = current_scrcpy_pids - initial_scrcpy_pids
+            
+            if new_pids:
+                # 找到新启动的 PID (通常只有一个)
+                actual_pid = list(new_pids)[0] 
+                # 记录实际 PID 用于后续终止
+                scrcpy_pids_to_kill[device_id] = actual_pid
+                initial_scrcpy_pids = current_scrcpy_pids # 更新初始列表供下一个设备使用
+                print(f"设备 {device_id} 的 scrcpy 进程已启动 (端口: {start_port}, 实际PID: {actual_pid})...")
+            else:
+                print(f"警告: 未能找到设备 {device_id} 的 scrcpy 进程的实际 PID!")
+
+            scrcpy_ports[device_id] = start_port
 
             offset_y += OFFSET_STEP 
             start_port += 1 
             
             if len(devices_to_start_scrcpy) > 1:
-                 time.sleep(1) 
+                 time.sleep(0.5) 
 
         # 4. 在执行任务前，等待 ADB 稳定
         if not wait_for_device_stability(devices_to_start_scrcpy):
@@ -299,11 +355,10 @@ if __name__ == "__main__":
             for device_id in available_devices:
                 if DEVICE_CAPABILITIES.get(device_id, {}).get('tag') == required_tag:
                     
-                    # 【修改】将端口信息加入 assignment_batch
                     assignment_batch.append({
                         "device_id": device_id,
                         "task": job['task'],
-                        "port": scrcpy_ports[device_id]
+                        "port": scrcpy_ports[device_id] 
                     })
                     assigned_now = device_id
                     break 
@@ -320,12 +375,10 @@ if __name__ == "__main__":
             for assignment in assignment_batch:
                 device_id = assignment['device_id']
                 task = assignment['task']
-                port = assignment['port'] # 获取端口
                 
                 thread = threading.Thread(
                     target=run_task_on_device,
-                    # 【关键修改】传递端口参数
-                    args=(device_id, tmp_server_config, task, port) 
+                    args=(device_id, tmp_server_config, task) 
                 )
                 task_threads.append(thread)
                 thread.start()
@@ -346,8 +399,25 @@ if __name__ == "__main__":
         total_time = time.time() - total_start
         print(f"总计执行时间为 {total_time:.2f} 秒")
         
-        # 由于线程内部已执行自清理，这里只作为最终保险
         print("\n正在执行最终清理...")
+        
+        # 通过真实的 scrcpy PID 终止进程 (最可靠的方式)
+        for device_id, pid in scrcpy_pids_to_kill.items():
+             print(f"    -> 尝试通过实际 PID 终止设备 {device_id} 的 scrcpy 进程 (PID: {pid})...")
+             try:
+                 if platform.system() == "Windows":
+                     # Windows 上使用 taskkill /F /T 来终止进程树
+                     subprocess.run(f"taskkill /PID {pid} /F /T", shell=True, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                 else:
+                     # macOS/Linux 上使用 kill -9 终止进程
+                     subprocess.run(f"kill -9 {pid}", shell=True, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                 
+                 print(f"    -> 设备 {device_id} 的 scrcpy 进程已终止。")
+             except Exception as e:
+                 print(f"    -> 终止 scrcpy 进程失败 ({device_id}): {e}")
+        
+        # 保险措施：通过端口终止残留进程
+        print("\n    -> 执行端口进程的二次保险清理...")
         for port in scrcpy_ports.values():
             terminate_process_by_port(port)
 
