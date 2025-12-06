@@ -22,7 +22,7 @@
 ## 📰 新闻
 
 * 🎁 **[即将推出...]**
-* 🎁 **[2025-12]** 感谢以下项目和作者提供的量化工具和教程：[GGUF_v1](https://huggingface.co/bartowski/stepfun-ai_GELab-Zero-4B-preview-GGUF)，[GGUF_v2](https://huggingface.co/noctrex/GELab-Zero-4B-preview-GGUF)，[EXL3](https://huggingface.co/ArtusDev/stepfun-ai_GELab-Zero-4B-preview-EXL3)，[Tutorials_v1](http://xhslink.com/o/1WrmgHGWFYh)，[Tutorials_v2](https://www.youtube.com/watch?v=4BMiDyQOpos)
+* 🎁 **[2025-12]** 感谢以下项目和作者提供的量化工具和教程：[GGUF_v1](https://huggingface.co/bartowski/stepfun-ai_GELab-Zero-4B-preview-GGUF)，[GGUF_v2](https://huggingface.co/noctrex/GELab-Zero-4B-preview-GGUF)，[EXL3](https://huggingface.co/ArtusDev/stepfun-ai_GELab-Zero-4B-preview-EXL3)，[Tutorials_CN](http://xhslink.com/o/1WrmgHGWFYh)，[Tutorials_EN](https://www.youtube.com/watch?v=4BMiDyQOpos)
 * 🎁 **[2025-11]** 我们在 [**Hugging Face**](https://huggingface.co/stepfun-ai/GELab-Zero-4B-preview) 和 [**Model Scope**](https://modelscope.cn/models/stepfun-ai/GELab-Zero-4B-preview) 上发布了一个轻量级的 **4B 模型**。
 * 🎁 **[2025-11]** 我们发布了来自 [**AndroidDaily**](https://huggingface.co/datasets/stepfun-ai/AndroidDaily) 基准测试的任务。
 * 🎁 **[2025-11]** 我们发布了当前的 **GELab-Zero** 工程基础设施。
