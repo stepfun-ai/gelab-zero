@@ -568,7 +568,9 @@ def act_on_device(device_id, action, print_command = False, refush_app = True, d
         adb_command += f' shell app_process -Djava.class.path=/data/local/tmp/yadb /data/local/tmp com.ysbing.yadb.Main -keyboard "{text}"'
 
     elif action['action_type'] == "Pop":
-        pass
+        if print_command:
+            print("Pop action received; no device command executed.")
+        return
 
     elif action['action_type'] == "Wait":
         wait_time = action['args']['duration']
@@ -598,13 +600,18 @@ def act_on_device(device_id, action, print_command = False, refush_app = True, d
         adb_command += f" shell app_process -Djava.class.path=/data/local/tmp/yadb /data/local/tmp com.ysbing.yadb.Main -touch {point[0]} {point[1]} 2000"
 
     elif action['action_type'] == "Abort":
-
-        pass
+        if print_command:
+            abort_reason = action.get('args', {}).get('abort_reason')
+            if abort_reason:
+                print(f"Abort action received: {abort_reason}")
+            else:
+                print("Abort action received.")
+        return
 
     elif action['action_type'] == "Complete":
-
-        pass
-
+        if print_command:
+            print("Complete action received.")
+        return
 
     else:
         raise ValueError(f"Invalid action type: {action['action_type']}")
