@@ -65,7 +65,7 @@ def make_status_prompt(task, current_image, hints, summary_history="", user_comm
         history_display = summary_history + user_comment if summary_history.strip() else "暂无历史操作"
 
     user_instruction = f'''\n\n{user_comment}\n\n''' if user_comment != "" else ""
-    task = task + user_instruction + "指令结束\n\n"
+    task = task + user_instruction + "\n指令结束\n\n"
 
     
     status_conversation = [
