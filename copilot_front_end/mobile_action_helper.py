@@ -134,9 +134,27 @@ def dectect_screen_on(device_id, print_command = False):
         command = f"{adb_command} shell dumpsys display"
         if print_command:
             print(f"Executing command: {command}")
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
-        result.stdout = result.stdout.encode('utf-8').decode('utf-8')
-        screen_state = local_str_grep(result.stdout, "mScreenState").strip()
+        
+        # Use text=False (or capture_output=True default) to get bytes, avoiding implicit decoding errors
+        result = subprocess.run(command, shell=True, capture_output=True, text=False)
+        
+        if result.stdout:
+            # Decode carefully, ignoring errors if necessary
+            # Try utf-8 first, then gbk, or just replace errors
+            try:
+                # ADB output is usually UTF-8, but on Windows shell it might get mixed. 
+                # using errors='ignore' or 'replace' is safest for logging/grepping
+                output_str = result.stdout.decode('utf-8', errors='replace')
+            except Exception:
+                output_str = result.stdout.decode('gbk', errors='replace')
+        else:
+            output_str = ""
+            
+        screen_state = local_str_grep(output_str, "mScreenState")
+        if screen_state:
+            screen_state = screen_state.strip()
+        else:
+            screen_state = ""
     else:
         command = f"{adb_command} shell dumpsys display | grep mScreenState"
         if print_command:

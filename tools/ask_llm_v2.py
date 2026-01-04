@@ -18,17 +18,25 @@ def ask_llm_anything(model_provider, model_name, messages, args= {
     "frequency_penalty": 0.0,
 }, resize_config=None):
 
-    with smart_open("model_config.yaml", "r") as f:
-        model_config = yaml.safe_load(f)
+    # 优先使用 args 中传入的 api_base 和 api_key
+    override_api_base = args.get("api_base") or args.get("base_url")
+    override_api_key = args.get("api_key")
     
-
-    if model_provider in model_config:
-        openai.api_base = model_config[model_provider]["api_base"]
-        openai.api_key = model_config[model_provider]["api_key"]
-
-
+    if override_api_base and override_api_key:
+        # 使用传入的配置
+        openai.api_base = override_api_base
+        openai.api_key = override_api_key
+        print(f"[LLM] Using override config: {override_api_base}")
     else:
-        raise ValueError(f"Unknown model provider: {model_provider}")
+        # 从配置文件读取
+        with smart_open("model_config.yaml", "r") as f:
+            model_config = yaml.safe_load(f)
+        
+        if model_provider in model_config:
+            openai.api_base = model_config[model_provider]["api_base"]
+            openai.api_key = model_config[model_provider]["api_key"]
+        else:
+            raise ValueError(f"Unknown model provider: {model_provider}")
     
     # preprocess
     def preprocess_messages(messages):

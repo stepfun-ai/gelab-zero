@@ -1,7 +1,11 @@
-local:
+﻿local:
+    display_name: "本地模型 (Ollama)"
     api_base: "http://localhost:11434/v1"
     api_key: "EMPTY"
+    default_model: "gelab-zero-4b-preview"
 
 stepfun:
+    display_name: "阶跃星辰 (StepFun)"
     api_base: "https://api.stepfun.com/v1"
-    api_key: "EMPTY"
+    api_key: ""
+    default_model: "step-gui"

@@ -1,11 +1,9 @@
 
 ![GELab-Zero 主图](./images/main_cn.png)
 
-
 > 👋 hi大家好！我们很荣幸推出首个同时包含模型和基础设施的全开源 GUI Agent。我们的解决方案主打即插即用的工程化体验，无需依赖云端，赋予您完全的隐私控制权。
 
 <p align="center">
-  <!-- <a href="https://github.com/stepfun-ai/gelab-zero"><img src="https://img.shields.io/badge/💻%20GitHub-Repository-black" alt="GitHub" /></a> -->
   <a href="https://arxiv.org/abs/2512.15431"><img src="https://img.shields.io/badge/arXiv-Step--GUI Technical Report-B31B1B.svg?logo=arxiv&logoColor=white" alt="arXiv" /></a>
   <a href="https://opengelab.github.io/"><img src="https://img.shields.io/badge/🌐%20Website-Project%20Page-blue" alt="Website" /></a>
   <a href="https://huggingface.co/stepfun-ai/GELab-Zero-4B-preview"><img src="https://img.shields.io/badge/🤗%20Hugging%20Face-GELab--Zero--4B--preview-orange" alt="Hugging Face Model" /></a>
@@ -17,6 +15,129 @@
   <a href="./README.md">English</a> |
   <a href="./README_CN.md">简体中文</a>
 </p>
+
+---
+
+# 🚀 Fork 增强版
+
+> **本项目基于 [stepfun-ai/gelab-zero](https://github.com/stepfun-ai/gelab-zero) 进行增强开发**
+> 
+> 以下内容为本 Fork 新增的功能和优化
+
+## 🖥️ Web UI 功能特性
+
+启动命令：`python start_web_ui.py`，然后访问 `http://localhost:8866`
+
+**左栏 - 控制面板**
+
+| 模块 | 功能 |
+|------|------|
+| **📱 设备管理** | 检查设备状态、查看设备列表、重启 ADB 服务 |
+| **📶 无线调试** | 通过 IP 地址无线连接设备、启用 TCP/IP 模式 |
+| **📊 任务监控** | 查看任务状态、⏸️ **暂停/注入/继续**、选择历史 Session |
+| **💬 命令/回复** | 输入任务指令或回复 Agent 询问，支持 `Ctrl+Enter` |
+| **⚙️ 参数配置** | 选择模型提供商、🔍 **检查模型连接**、配置 API 参数 |
+| **🛠 实用工具** | 启动 scrcpy、获取应用列表、📄 **导出PDF轨迹**、📦 **扫描应用映射** |
+
+> ⚠️ **重要提示**：对于新手机或重新启用开发者模式后，需要先通过 USB 数据线连接一次。这次初始 USB 连接用于授权电脑的 ADB 访问权限。授权完成后，后续可以一直使用无线连接，无需再进行有线连接。
+
+**右栏 - 任务展示**
+
+| 模块 | 功能 |
+|------|------|
+| **📱 任务轨迹** | 可视化回放每个执行步骤，包含截图、思考过程、动作详情 |
+| **📋 实时日志** | 实时显示任务执行的终端输出，支持清空和复制 |
+
+## ✨ 新增功能
+
+### ⏸️ 暂停 / 注入 / 继续
+
+在任务执行过程中，可以随时：
+- **立即暂停**：点击暂停按钮立即终止当前执行
+- **注入指令**：输入修正指令（如"改为搜索xxx"）
+- **无缝继续**：从同一 Session 继续执行，保持轨迹完整性
+
+> 💡 解决了 Agent 执行过程中无法人工干预修正的痛点
+
+### 🔍 模型连接检查
+
+参数配置面板新增一键检测功能：
+- 快速测试本地/在线模型是否可用
+- 自动区分本地 (Ollama) 和在线 API
+- 显示连接状态、模型名称
+
+### 📋 多模型提供商配置
+
+从 `model_config.yaml` 自动加载，每个提供商可配置：
+
+```yaml
+local:
+    display_name: "本地模型 (Ollama)"
+    api_base: "http://localhost:11434/v1"
+    api_key: "EMPTY"
+    default_model: "gelab-zero-4b-preview"
+
+stepfun:
+    display_name: "阶跃星辰 (StepFun)"
+    api_base: "https://api.stepfun.com/v1"
+    api_key: "YOUR_API_KEY"
+    default_model: "step-gui"
+```
+
+### 📄 PDF 轨迹导出
+
+- 导出任务执行轨迹为 PDF 文件
+- 包含截图、思考过程、动作详情
+- 支持自动下载
+
+### 🎨 UI 优化
+
+- **三行独立配置**：Base URL、API Key、模型名称分行显示，更易填写
+- **改进的状态显示**：更清晰的任务状态反馈（就绪/运行中/等待输入/已暂停）
+- **回复交互修复**：Agent 询问时能正确检测等待输入状态
+
+### 📦 应用映射扫描
+
+自动扫描设备上已安装的应用，建立**中文应用名→包名**的映射，让 AWAKE 功能能识别更多应用。
+
+**文件结构：**
+
+```
+项目根目录/
+├── default_package_map.yaml      # 默认映射库（160+条，项目提供）
+├── user_package_map.yaml         # 用户映射（扫描结果+自定义）
+├── user_package_map.yaml.example # 模板文件
+└── aapt2-8.5.0-11315950-windows/ # aapt2 工具（Windows）
+```
+
+**功能特性：**
+
+- **实时加载**：修改 YAML 文件后立即生效，无需重启程序
+- **智能扫描**：优先从映射表匹配（秒级），未匹配的自动用 aapt2 深度解析
+- **优先级**：`user_package_map.yaml` > `default_package_map.yaml`
+
+**使用方法：**
+
+1. 在 Web UI 点击「🔍 扫描应用映射」
+2. 扫描结果自动保存到 `user_package_map.yaml`
+3. 在「📝 应用映射编辑器」中手动编辑/添加映射
+
+**⏱️ 扫描时间参考：**
+
+| 匹配方式 | 单个应用耗时 | 说明 |
+|---------|-------------|------|
+| 映射表匹配 | <1 秒 | 从 160+ 条映射中快速查找 |
+| 深度解析 | 5-15 秒 | 拉取 APK 并用 aapt2 解析 |
+
+> ⚠️ **注意**：如手机安装应用较多（如 300+ 个），且大部分未在默认映射中，深度扫描可能需要 **20-40 分钟**。建议先手动编辑 `default_package_map.yaml` 添加常用应用。
+
+> 💡 项目已内置 `aapt2` 工具，路径自动适配，无需额外配置
+
+---
+
+# 📖 官方原版内容
+
+> 以下内容来自 [stepfun-ai/gelab-zero](https://github.com/stepfun-ai/gelab-zero) 原版 README
 
 ## 📰 新闻
 
@@ -50,7 +171,7 @@
 
 ## 📖 背景
 
-随着 AI 体验日益深入消费级终端设备，移动 Agent 研究正处于从 **“可行性验证”** 向 **“大规模应用”** 转型的关键节点。虽然基于 GUI 的方案具有通用兼容性，但移动生态的碎片化带来了沉重的工程负担，阻碍了创新。GELab-Zero 旨在打破这些壁垒。
+随着 AI 体验日益深入消费级终端设备，移动 Agent 研究正处于从 **"可行性验证"** 向 **"大规模应用"** 转型的关键节点。虽然基于 GUI 的方案具有通用兼容性，但移动生态的碎片化带来了沉重的工程负担，阻碍了创新。GELab-Zero 旨在打破这些壁垒。
 
 * **⚡️ 开箱即用的全栈基建**
 解决移动生态碎片化痛点，提供统一的一键推理管道。自动处理多设备 ADB 连接、依赖安装及权限配置，让开发者专注于策略创新而非工程基础设施。
@@ -59,7 +180,7 @@
 * **📱 灵活的任务分发与编排**
 支持跨多设备分发任务并记录交互轨迹。提供 ReAct 循环、多智能体协作及定时任务三种通用模式，以处理复杂的真实业务场景。
 * **🚀 加速从原型到落地**
-赋能开发者快速验证交互策略，同时允许企业直接复用底层基建实现零成本 MCP 集成，跨越从“可行性验证”到“大规模应用”的关键鸿沟。
+赋能开发者快速验证交互策略，同时允许企业直接复用底层基建实现零成本 MCP 集成，跨越从"可行性验证"到"大规模应用"的关键鸿沟。
 
 ## 🎥 应用演示
 
@@ -113,7 +234,7 @@
 
 
 ### 复杂任务 - 信息检索
-任务：在知乎上搜索“如何学习理财”，并查看第一个点赞超过 1万 的回答
+任务：在知乎上搜索"如何学习理财"，并查看第一个点赞超过 1万 的回答
 
 **[📹 点击查看演示视频](./images/video_6.mp4)**
 
@@ -175,7 +296,7 @@ conda init powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-激活成功后可见“(base)” 括号显示在最新一行的开头。
+激活成功后可见"(base)" 括号显示在最新一行的开头。
 
 3. 执行和调试代码建议使用vs code，可在官网下载安装：https://code.visualstudio.com/ 
 
@@ -201,7 +322,6 @@ conda activate gelab-zero
 ollama 部署在某些 Mac 设备可能无法正常运行（表征是吐 token 特慢，原因待进一步排查），可使用 llama.cpp 部署。
 
 #### Step 1.1: Ollama 搭建（推荐个人用户）
-<!-- https://ollama.com/ -->
 
 对于做本地推理的个人用户，我们强烈推荐使用 Ollama 方式进行本地部署，该方式具有安装简单、使用便捷的优势。
 
@@ -284,7 +404,7 @@ curl -X POST http://localhost:11434/v1/chat/completions \
 
 通常可以按如下步骤在安卓手机上开启开发者模式和 USB 调试：
 1. 打开手机上的「设置」应用。
-2. 找到「关于手机」或「系统」选项，连续点击「版本号」10 次以上，直到看到“您已处于开发者模式”或类似提示。
+2. 找到「关于手机」或「系统」选项，连续点击「版本号」10 次以上，直到看到"您已处于开发者模式"或类似提示。
 3. 返回「设置」主页面，找到「开发者选项」。【重要，必须开启】
 4. 在「开发者选项」中，找到并开启「USB 调试」功能，按照屏幕提示完成 USB 调试的启用。【重要，必须开启】
 
@@ -342,7 +462,6 @@ AN2CVB4C28000731        device
 
 如果没有看到任何设备，请检查数据线连接是否正常，以及手机上的 USB 调试选项是否正确开启。首次连接手机时，手机上可能会弹出授权提示，只需选择「允许」即可。如下图所示：
 
-<!-- ![授权提示](images/developer_mode_auth.png){width=20%} -->
 <div style="display: flex; align-items: center; justify-content: center; width: 80%; margin: 0 auto;">
   <img src="images/developer_mode_auth.png" alt="授权提示" style="flex: 1; height: 230px; object-fit: contain; margin-right: 1px;"/>
 </div>

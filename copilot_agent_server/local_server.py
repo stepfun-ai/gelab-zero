@@ -145,6 +145,12 @@ class LocalServer(BaseCopilotServer):
             "frequency_penalty": 0.0,
             "max_tokens": 512,
         })
+        
+        # 将 base_url 和 api_key 传入 args，供 ask_llm_anything 使用
+        if 'base_url' in model_config:
+            args['base_url'] = model_config['base_url']
+        if 'api_key' in model_config:
+            args['api_key'] = model_config['api_key']
 
         image_preprocess = model_config.get('image_preprocess', None)
 

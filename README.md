@@ -3,7 +3,6 @@
 > 👋 Hi, everyone! We are proud to present the first fully open-source GUI Agent with both model and infrastructure. Our solution features plug-and-play engineering with no cloud dependencies, giving you complete privacy control.
 
 <p align="center">
-  <!-- <a href="https://github.com/stepfun-ai/gelab-zero"><img src="https://img.shields.io/badge/💻%20GitHub-Repository-black" alt="GitHub" /></a> -->
   <a href="https://arxiv.org/abs/2512.15431"><img src="https://img.shields.io/badge/arXiv-Step--GUI Technical Report-B31B1B.svg?logo=arxiv&logoColor=white" alt="arXiv" /></a>
   <a href="https://opengelab.github.io/"><img src="https://img.shields.io/badge/🌐%20Website-Project%20Page-blue" alt="Website" /></a>
   <a href="https://huggingface.co/stepfun-ai/GELab-Zero-4B-preview"><img src="https://img.shields.io/badge/🤗%20Hugging%20Face-GELab--Zero--4B--preview-orange" alt="Hugging Face Model" /></a>
@@ -15,6 +14,129 @@
   <a href="./README.md">English</a> |
   <a href="./README_CN.md">简体中文</a>
 </p>
+
+---
+
+# 🚀 Fork Enhancements
+
+> **This project is enhanced from [stepfun-ai/gelab-zero](https://github.com/stepfun-ai/gelab-zero)**
+> 
+> The following content describes new features added in this Fork.
+
+## 🖥️ Web UI Features
+
+Launch: `python start_web_ui.py`, then visit `http://localhost:8866`
+
+**Left Panel - Control**
+
+| Module | Features |
+|--------|----------|
+| **📱 Device Management** | Check device status, view device list, restart ADB service |
+| **📶 Wireless Debugging** | Connect device via IP address, enable TCP/IP mode |
+| **📊 Task Monitoring** | View task status, ⏸️ **Pause/Inject/Resume**, select historical Sessions |
+| **💬 Command/Reply** | Enter task instructions or reply to Agent, supports `Ctrl+Enter` |
+| **⚙️ Model Configuration** | Select model provider, 🔍 **Check model connection**, configure API |
+| **🛠 Utilities** | Launch scrcpy, get app list, 📄 **Export PDF trajectory**, 📦 **Scan App Mapping** |
+
+> ⚠️ **Important**: For new phones or after re-enabling developer mode, you must first connect via USB cable at least once. This initial USB connection authorizes the computer for ADB access. Once authorized, you can use wireless debugging without USB connection going forward.
+
+**Right Panel - Display**
+
+| Module | Features |
+|--------|----------|
+| **📱 Task Trajectory** | Visual replay of each step with screenshots, thought process, action details |
+| **📋 Real-time Logs** | Real-time task execution output, with clear and copy buttons |
+
+## ✨ New Features
+
+### ⏸️ Pause / Inject / Resume
+
+During task execution, you can:
+- **Instant Pause**: Click pause button to immediately terminate current execution
+- **Inject Instructions**: Enter correction instructions (e.g., "search for xxx instead")
+- **Seamless Resume**: Continue from the same Session, maintaining trajectory integrity
+
+> 💡 Solves the pain point of not being able to manually intervene during Agent execution
+
+### 🔍 Model Connection Check
+
+One-click test in configuration panel:
+- Quickly test if local/online model is available
+- Automatically distinguish local (Ollama) vs online API
+- Display connection status and model name
+
+### 📋 Multi-Provider Configuration
+
+Auto-loaded from `model_config.yaml`, each provider configures:
+
+```yaml
+local:
+    display_name: "Local Model (Ollama)"
+    api_base: "http://localhost:11434/v1"
+    api_key: "EMPTY"
+    default_model: "gelab-zero-4b-preview"
+
+stepfun:
+    display_name: "StepFun"
+    api_base: "https://api.stepfun.com/v1"
+    api_key: "YOUR_API_KEY"
+    default_model: "step-gui"
+```
+
+### 📄 PDF Trajectory Export
+
+- Export task execution trajectory to PDF file
+- Includes screenshots, thought process, action details
+- Auto-download support
+
+### 🎨 UI Improvements
+
+- **Three-line Configuration**: Base URL, API Key, Model Name on separate rows for easier input
+- **Improved Status Display**: Clearer task status feedback (Ready/Running/Waiting/Paused)
+- **Reply Interaction Fix**: Properly detects waiting for input state when Agent asks questions
+
+### 📦 App Mapping Scanner
+
+Automatically scan installed apps on the device and build a **Chinese app name → package name** mapping, enabling the AWAKE feature to recognize more apps.
+
+**File Structure:**
+
+```
+Project Root/
+├── default_package_map.yaml      # Default mapping library (160+ entries)
+├── user_package_map.yaml         # User mappings (scan results + custom)
+├── user_package_map.yaml.example # Template file
+└── aapt2-8.5.0-11315950-windows/ # aapt2 tool (Windows)
+```
+
+**Features:**
+
+- **Real-time Loading**: Changes to YAML files take effect immediately, no restart needed
+- **Smart Scanning**: Prioritizes mapping table (instant), auto-parses unknown apps with aapt2
+- **Priority**: `user_package_map.yaml` > `default_package_map.yaml`
+
+**Usage:**
+
+1. Click "🔍 Scan App Mapping" in Web UI
+2. Scan results auto-save to `user_package_map.yaml`
+3. Manually edit/add mappings in "📝 App Mapping Editor"
+
+**⏱️ Scan Time Reference:**
+
+| Match Type | Time per App | Description |
+|-----------|-------------|-------------|
+| Mapping Match | <1 sec | Quick lookup from 160+ mappings |
+| Deep Parse | 5-15 sec | Pull APK and parse with aapt2 |
+
+> ⚠️ **Note**: If you have many apps installed (e.g., 300+) and most are not in the default mapping, deep scanning may take **20-40 minutes**. Consider manually editing `default_package_map.yaml` first.
+
+> 💡 Project includes `aapt2` tool with auto-adaptive paths, no extra configuration needed
+
+---
+
+# 📖 Official Original Content
+
+> The following content is from [stepfun-ai/gelab-zero](https://github.com/stepfun-ai/gelab-zero) original README
 
 ## 📰 News
 
@@ -488,7 +610,7 @@ Go to Settings → Local API Server, create an API key under server configuratio
 
 #### Step 3: Adjust GELab-Zero Agent model config
 
-llama.cpp’s service differs slightly from Ollama, so you must tweak the model config in GELab-Zero Agent. Two places:
+llama.cpp's service differs slightly from Ollama, so you must tweak the model config in GELab-Zero Agent. Two places:
 
 1. In `model_config.yaml`, update the port and API key (use the key you just created):
 
