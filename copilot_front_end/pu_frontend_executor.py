@@ -305,8 +305,8 @@ def act_on_device(frontend_action, device_id, wm_size, print_command = False, re
 
         def preprocess_text_for_adb(text):
             # Escape special characters for adb shell input
-            text = text.replace("\n", " ").replace("\t", " ")
-            text = text.replace(" ", "\\ ")
+            text = text.replace("\\n", "\\\\n").replace("\t", " ").replace("(", "\\(").replace(")", "\\)")
+            text = text.replace(" ", "\\ ").replace("#", "\\#").replace("&", "\\&").replace("'", "\\'")
             return text
 
 

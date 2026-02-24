@@ -170,7 +170,7 @@ package_name_map = {
     "钢琴块二": "com.cmplay.tiles2_cn",
     "麦当劳": "com.mcdonalds.gma.cn",
     "寻艺": "com.vlinkage.xunyee",
-    "京东到家": "com.jingdong.pdj",
+    # "京东到家": "com.jingdong.pdj",
     "小象超市": "com.meituan.retail.v.android",
     "京东金融": "com.jd.jrapp",
     "猫眼": "com.sankuai.movie",
@@ -209,6 +209,7 @@ package_name_map = {
     "osmAnd": "net.osmand",
     "给到": "com.guanaitong",
     "百词斩": "com.jiongji.andriod.card",
+    "剪映": "com.lemon.lv",
 
 }
 

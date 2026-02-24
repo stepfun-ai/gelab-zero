@@ -176,13 +176,27 @@ class LocalServer(BaseCopilotServer):
 
         
         llm_start_time = time.time()
-        response = ask_llm_anything(
-            model_provider=model_provider,
-            model_name=model_name,
-            messages=messages_to_ask,
-            args=args
-        )
+
+        for i in range(3):
+            try:
+                response = ask_llm_anything(
+                    model_provider=model_provider,
+                    model_name=model_name,
+                    messages=messages_to_ask,
+                    args=args
+                )
+                break
+            except Exception as e:
+                print(f"Error when asking LLM: {e}")
+                if i == 2:
+                    raise e
+                else:
+                    print(f"Retrying... ({i+1}/3)")
+                    time.sleep(1)
+
         llm_end_time = time.time()
+
+        print(f"LLM response: \n-----------------\n{response}\n-----------------")
 
         action = parser.str2action(response)
 
@@ -207,7 +221,12 @@ class LocalServer(BaseCopilotServer):
 
         return {
             "action": action,
-            "current_step": current_ste + 1
+            "current_step": current_ste + 1,
+            "llm_cost": {
+                "llm_time": llm_end_time - llm_start_time,
+                "llm_start_time": llm_start_time,
+                "llm_end_time": llm_end_time
+            },
         }
         
     

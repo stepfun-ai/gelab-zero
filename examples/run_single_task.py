@@ -1,4 +1,3 @@
-
 import os
 import sys
 import time
@@ -17,10 +16,20 @@ tmp_server_config = {
 
 
 local_model_config = {
-    "task_type": "parser_0922_summary",
+    # "task_type": "parser_0922_summary",
+    # "task_type": "parser_0920",
+    "task_type": "parser_0920_summary_adv",
     "model_config": {
-        "model_name": "gelab-zero-4b-preview",
-        "model_provider": "local",
+        # "model_name": "gelab-zero-4b-preview:latest",
+        # "model_provider": "local",
+
+        "model_name": "step-gui-1",
+        "model_provider": "step",
+
+        # "model_name": 'peqwen10b-20251231',
+        # "model_provider": "eval",
+
+
         "args": {
             "temperature": 0.1,
             "top_p": 0.95,
@@ -30,13 +39,13 @@ local_model_config = {
         
         # optional to resize image
         # "resize_config": {
-        #     "is_resize": True,
-        #     "target_image_size": (756, 756)
+            # "is_resize": True,
+            # "target_image_size": (728, 728)
         # }
     },
 
     "max_steps": 400,
-    "delay_after_capture": 2,
+    "delay_after_capture": 3,
     "debug": False
 }
 
@@ -64,20 +73,6 @@ def wrap_automate_step_with_timing(server_instance):
 
 if __name__ == "__main__":
 
-     # task = "打开微信，给柏茗，发helloworld"
-    # task = "打开 给到 app，在主页，下滑寻找，员工权益-奋斗食代，帮我领劵。如果不能领取就退出。"
-    # task = "open wechat to send a message 'helloworld' to 'TKJ'"
-    #task = "去淘宝帮我买本书"
-    if len(sys.argv) < 2:
-        print("❌ 错误：未传入任务参数！")
-        print("📝 使用方法：")
-        print(f"   python {sys.argv[0]} \"你的任务描述\"")
-        print("   示例1：python script.py \"去淘宝帮我买本书\"")
-        print("   示例2：python script.py \"打开微信，给柏茗发helloworld\"")
-        sys.exit(1)  
-    
-    task = ' '.join(sys.argv[1:])
-
     # The device ID you want to use
     device_id = list_devices()[0]
     device_wm_size = get_device_wm_size(device_id)
@@ -86,26 +81,29 @@ if __name__ == "__main__":
         "device_wm_size": device_wm_size
     }
 
-   
+    task_list = [
 
-    tmp_rollout_config = local_model_config
-    l2_server = LocalServer(tmp_server_config)
+    "去小红书找一个能让我在上海玩四天的攻略，向我报告主要内容，浏览3-5个帖子。"
+    ]
 
-    # 注入计时逻辑
-    wrap_automate_step_with_timing(l2_server)
-    # 执行任务并计总时间
-    total_start = time.time()
-    # Disable auto reply
-    evaluate_task_on_device(l2_server, device_info, task, tmp_rollout_config, reflush_app=True)
-    total_time = time.time() - total_start
+    for task in task_list:
 
-    # 在最后加一行总时间
-    print(f"总计执行时间为 {total_time} 秒")
+        print(f"Using device {device_id} with wm size {device_wm_size} to execute task: {task}")
+
+        tmp_rollout_config = local_model_config
+        l2_server = LocalServer(tmp_server_config)
+
+        # 注入计时逻辑
+        wrap_automate_step_with_timing(l2_server)
+        # 执行任务并计总时间
+        total_start = time.time()
+        # Disable auto reply
+        evaluate_task_on_device(l2_server, device_info, task, tmp_rollout_config, reflush_app=True)
+        total_time = time.time() - total_start
+
+        # 在最后加一行总时间
+        print(f"总计执行时间为 {total_time} 秒")
     
-    pass
-    # Enable auto reply
-    # evaluate_task_on_device(l2_server, device_info, task, tmp_rollout_config, reflush_app=True, auto_reply=True)
-
 
 
     pass

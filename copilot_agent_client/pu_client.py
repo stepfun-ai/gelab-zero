@@ -179,7 +179,13 @@ def evaluate_task_on_device(agent_server, device_info, task, rollout_config, ext
         history_actions.append(action)
 
 
-        print(f"Step {step_idx+1}/{max_steps} done. Action: {action}")
+        # print(f"Step {step_idx+1}/{max_steps} done. Action: {action}")
+        # print(f"Step {step_idx+1}/{max_steps} done.\nAction Type: {action['action_type']}, cot: {action.get('cot', '')}\nSession ID: {session_id}\n")
+        print(f"Step {step_idx+1}/{max_steps} done.\nAction: {action}\nSession ID: {session_id}\n")
+        print("-" * 50)
+        print(json.dumps(action, ensure_ascii=False, indent=2))
+        print("-" * 50)
+        
 
         if action['action_type'].upper() in ['COMPLETE', "ABORT"]:
             stop_reason = action['action_type'].upper()
@@ -199,7 +205,7 @@ def evaluate_task_on_device(agent_server, device_info, task, rollout_config, ext
 
     return_log['stop_steps'] = step_idx + 1
 
-    print(f"Task {task} done in {len(history_actions)} steps. Session ID: {session_id}")
+    # print(f"Task {task} done in {len(history_actions)} steps. Session ID: {session_id}")
 
     return return_log
 
