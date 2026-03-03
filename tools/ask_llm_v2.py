@@ -101,6 +101,8 @@ def ask_llm_anything(model_provider, model_name, messages, args= {
     )
     end_time = time.time()
     print(f"LLM {model_name} inference time: {end_time - start_time:.2f} seconds")
+    # token cost
+    print(f"LLM {model_name} prompt tokens: {completion['usage']['prompt_tokens']}, completion tokens: {completion['usage']['completion_tokens']}, total tokens: {completion['usage']['total_tokens']}")
     
     result = completion.choices[0].message['content']
 
@@ -110,6 +112,40 @@ def ask_llm_anything(model_provider, model_name, messages, args= {
     if reasoning is not None and len(reasoning) > 0:
         result = "<think>" + reasoning + "</think>" + "\n" + result
 
-    # print(f"LLM {model_name} says:\n--------------start--------------\n{result}\n---------------end---------------")
+    print(f"LLM {model_name} says:\n--------------start--------------\n{result}\n---------------end---------------")
 
     return result
+
+
+if __name__ == "__main__":
+    while True:
+        #         "model_name": "step3p5v-sftv1-128k-it8949-reason",
+        # "model_provider": "stepcast",
+
+        try:
+            response = ask_llm_anything(
+                model_provider="stepcast",
+                model_name="step3p5v-sftv1-128k-it8949-reason",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "请问现在的时间是几点？"
+                            }
+                        ]
+                    }
+                ],
+                args={
+                    "temperature": 0.1,
+                    "top_p": 0.95,
+                    "frequency_penalty": 0.0,
+                    "max_tokens": 4096,
+                },
+            )
+            print("LLM response:", response)
+        except Exception as e:
+            print("Error during LLM interaction:", str(e))
+        
+        time.sleep(1)
