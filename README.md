@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/stepfun-ai-gelab-zero-badge.png)](https://mseep.ai/app/stepfun-ai-gelab-zero)
+
 ![GELab-Zero Main Image](./images/main_en.png)
 
 > 👋 Hi, everyone! We are proud to present the first fully open-source GUI Agent with both model and infrastructure. Our solution features plug-and-play engineering with no cloud dependencies, giving you complete privacy control.
