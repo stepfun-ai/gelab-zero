@@ -5,3 +5,7 @@ local:
 stepfun:
     api_base: "https://api.stepfun.com/v1"
     api_key: "EMPTY"
+
+litellm:
+    api_base: "EMPTY"
+    api_key: "EMPTY"
