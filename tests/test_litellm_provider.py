@@ -27,11 +27,11 @@ class TestLiteLLMCodePath:
 
     def test_uses_litellm_completion(self):
         src = ASK_LLM_PATH.read_text()
-        assert "_litellm.completion(" in src
+        assert "litellm.completion(" in src
 
-    def test_lazy_imports_litellm(self):
+    def test_imports_litellm_at_top(self):
         src = ASK_LLM_PATH.read_text()
-        assert "import litellm as _litellm" in src
+        assert "import litellm" in src.split("def ")[0]
 
     def test_skips_empty_api_key(self):
         src = ASK_LLM_PATH.read_text()

@@ -10,6 +10,7 @@ import base64
 # import openai
 # to support 2.28.0
 from openai import OpenAI
+import litellm
 
 import yaml
 
@@ -129,13 +130,6 @@ def ask_llm_anything(model_provider, model_name, messages, args= {
 
     if model_provider == "litellm":
         # Route through LiteLLM SDK for 100+ provider support
-        try:
-            import litellm as _litellm
-        except ImportError:
-            raise ImportError(
-                "litellm is required for the 'litellm' provider. "
-                "Install with: pip install litellm"
-            )
         litellm_params = {
             "model": model_name,
             "messages": messages,
@@ -149,7 +143,7 @@ def ask_llm_anything(model_provider, model_name, messages, args= {
             litellm_params["api_key"] = api_key
         if api_base and api_base != "EMPTY":
             litellm_params["api_base"] = api_base
-        completion = _litellm.completion(**litellm_params)
+        completion = litellm.completion(**litellm_params)
     else:
         default_headers = {
         }
