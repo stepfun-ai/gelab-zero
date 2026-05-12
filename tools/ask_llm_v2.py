@@ -10,6 +10,7 @@ import base64
 # import openai
 # to support 2.28.0
 from openai import OpenAI
+import litellm
 
 import yaml
 
@@ -127,33 +128,44 @@ def ask_llm_anything(model_provider, model_name, messages, args= {
     # Measure API latency for observability.
     start_time = time.time()
 
-    default_headers = {
-    }
+    if model_provider == "litellm":
+        # Route through LiteLLM SDK for 100+ provider support
+        litellm_params = {
+            "model": model_name,
+            "messages": messages,
+            "temperature": args.get("temperature", 0.5),
+            "top_p": args.get("top_p", 1.0),
+            "max_tokens": args.get("max_tokens", 100),
+            "drop_params": True,
+            "timeout": timeout,
+        }
+        if api_key and api_key != "EMPTY":
+            litellm_params["api_key"] = api_key
+        if api_base and api_base != "EMPTY":
+            litellm_params["api_base"] = api_base
+        completion = litellm.completion(**litellm_params)
+    else:
+        default_headers = {
+        }
 
-    # to support 2.28.0
-    client = OpenAI(
-        api_key=api_key,
-        base_url=api_base,
-    )
+        # to support 2.28.0
+        client = OpenAI(
+            api_key=api_key,
+            base_url=api_base,
+        )
 
-    completion = client.chat.completions.create(
-        model=model_name,
-        messages=messages,
-        temperature=args.get("temperature", 0.5),
-        top_p=args.get("top_p", 1.0),
-        frequency_penalty=args.get("frequency_penalty", 0.0),
-        max_tokens=args.get("max_tokens", 100), 
+        completion = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            temperature=args.get("temperature", 0.5),
+            top_p=args.get("top_p", 1.0),
+            frequency_penalty=args.get("frequency_penalty", 0.0),
+            max_tokens=args.get("max_tokens", 100),
 
-        extra_headers=default_headers,
+            extra_headers=default_headers,
 
-        timeout=timeout,
-
-        # reasoning_effort = "high", # for step_stage, can be "none", "medium", "full"
-
-        # stream=False,
-        # enable_thinking = False,
-        # timeout=300,
-    )
+            timeout=timeout,
+        )
     end_time = time.time()
     print(f"LLM {model_name} inference time: {end_time - start_time:.2f} seconds")
     print(f"LLM Args: {json.dumps(args, ensure_ascii=False)}", flush=True)
