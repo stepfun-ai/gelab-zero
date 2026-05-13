@@ -45,7 +45,7 @@ def ask_llm_anything(model_provider, model_name, messages, args= {
         ValueError: If ``model_provider`` is not found in ``model_config.yaml``.
     """
 
-    with open("model_config.yaml", "r") as f:
+    with open("model_config.yaml", "r", encoding="utf-8") as f:
         model_config = yaml.safe_load(f)
     
 
@@ -206,8 +206,8 @@ def ask_llm_anything(model_provider, model_name, messages, args= {
     if not result.startswith("<think>") :
         print(f"Warning: LLM {model_name} returned response without reasoning content.", flush=True)
 
-
-    print(f"LLM {model_name} says:\n--------------start--------------\n{result}\n---------------end---------------",flush=True)
+    safe_result = result.encode("utf-8", errors="replace").decode(errors="replace")
+    print(f"LLM {model_name} says:\n--------------start--------------\n{safe_result}\n---------------end---------------", flush=True)
 
     return result
 

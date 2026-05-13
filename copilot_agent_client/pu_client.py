@@ -127,6 +127,11 @@ def evaluate_task_on_device(agent_server, device_info, task, rollout_config, ext
     delay_after_capture = rollout_config.get('delay_after_capture', 2)
 
     history_actions = []
+    # 保留执行期截图的 base64，供 Judge 使用
+    # 只保留最后 JUDGE_SCREENSHOT_KEEP 张，避免内存占用过大
+    # key = step_idx（0-based），value = base64 url
+    JUDGE_SCREENSHOT_KEEP = 5
+    step_screenshots: dict[int, str] = {}
 
     for step_idx in range(max_steps):
 
@@ -138,6 +143,13 @@ def evaluate_task_on_device(agent_server, device_info, task, rollout_config, ext
 
         image_b64_url = make_b64_url(image_path, resize_config=rollout_config['model_config'].get("resize_config", None))
         smart_remove(image_path)
+
+        # 分叉：同一张截图保存一份给 Judge，不影响 Agent 处理路径
+        step_screenshots[step_idx] = image_b64_url
+        # 只保留最后 K 步，滚动丢弃更早的
+        if len(step_screenshots) > JUDGE_SCREENSHOT_KEEP:
+            oldest_key = min(step_screenshots)
+            del step_screenshots[oldest_key]
         
         payload = {
             "session_id": session_id,
@@ -196,8 +208,21 @@ def evaluate_task_on_device(agent_server, device_info, task, rollout_config, ext
 
     # return_log['session_id'] = session_id
     return_log['stop_reason'] = stop_reason
-
     return_log['stop_steps'] = step_idx + 1
+    # judge 需要的字段：最终动作返回文本 + 完整历史
+    # 注意：COMPLETE 的消息字段名是 'return'（协议格式：action:COMPLETE\treturn:...）
+    #       ABORT   的消息字段名是 'value' （协议格式：action:ABORT\tvalue:...）
+    if stop_reason == 'COMPLETE':
+        return_log['return_val'] = action.get('return') or action.get('value') or ''
+    elif stop_reason == 'ABORT':
+        return_log['return_val'] = action.get('value') or action.get('return') or ''
+    else:
+        return_log['return_val'] = ''
+    return_log['history_actions'] = history_actions
+    # 执行期截图（最后 JUDGE_SCREENSHOT_KEEP 步），Judge 直接用这些，不再延迟补截
+    # last_step_screenshot：COMPLETE/ABORT 那一步 Agent 实际看到的画面，最高优先级
+    return_log['step_screenshots'] = step_screenshots
+    return_log['last_step_screenshot'] = step_screenshots.get(step_idx)
 
     print(f"Task {task} done in {len(history_actions)} steps. Session ID: {session_id}")
 

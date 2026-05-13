@@ -260,3 +260,91 @@ http://localhost:33503
 5. 改 `examples/run_single_task_state_compress.py` 的 `model_provider` / `model_name`
 6. 运行 `python examples/run_single_task_state_compress.py --task "你的任务"`
 7. 运行 `streamlit run visualization/pages/main_page.py --server.port 33503`
+
+---
+
+## 6. Pass@N 评测入口（带 VLM Judge）
+
+除了 `run_single_task_state_compress.py`，本仓库还提供了 `examples/run_single_task_with_judge.py`，在原有执行能力基础上新增了两个核心功能：**Pass@N 重试** 和 **VLM Judge 自动判定**。
+
+### 6.1 功能概述
+
+| 功能 | 说明 |
+|------|------|
+| **Pass@N** | 每个任务最多执行 N 次（默认 3），Judge 判定通过即提前退出，节省不必要的重试 |
+| **VLM Judge** | 任务结束后自动调用 LLM，结合执行期截图和动作日志判断任务是否真正完成 |
+| **截图分叉** | Agent 每步截图同时保留一份给 Judge，Judge 看到的是 Agent 决策时的真实画面，而非事后补截 |
+| **场景自动检测** | 任务描述含"公众号/推文/文章"等关键词时，自动注入滑动阅读全文的约束和验收标准 |
+| **交叉核验** | Judge 对比截图实际内容与 Agent 返回值，捕捉读图幻觉类错误 |
+
+### 6.2 配置 model_config.yaml
+
+在原有 `stepfun` 配置基础上，新增 `judge` 节：
+
+```yaml
+stepfun:
+    api_base: "https://api.stepfun.com/v1"
+    api_key: "YOUR_API_KEY"
+
+# judge 独立一节，换模型只改 model_name，无需动代码
+judge:
+    api_base: "https://api.stepfun.com/v1"
+    api_key: "YOUR_API_KEY"
+    model_name: "step-3.6"
+```
+
+`judge` 可以和 `stepfun` 使用同一套 API，也可以指向不同服务商。
+
+### 6.3 运行
+
+```bash
+python examples/run_single_task_with_judge.py "你的任务描述"
+```
+
+示例：
+
+```bash
+python examples/run_single_task_with_judge.py "打开微信，查看通讯录第一个联系人的名字"
+python examples/run_single_task_with_judge.py "打开设置，查看当前手机型号"
+```
+
+### 6.4 输出说明
+
+任务执行过程日志（LLM 推理、每步动作）输出后，末尾会打印独立的评测报告：
+
+```
+############################################################
+#                   EVALUATION REPORT                     #
+############################################################
+  状态      : ✅ SUCCESS
+  耗时      : 48.2s  (1/3 次 attempt)
+  stop      : COMPLETE
+
+  📤 Agent 输出
+  ──────────────────────────────────────────────────────
+  打开设置后，当前手机型号为 XXX
+
+  🔍 Judge 判定
+  ──────────────────────────────────────────────────────
+  verdict       : ✅ pass  (confidence=100%)
+  reason        : 截图清晰显示榜单页面，返回值与截图一致
+  process_score : 1.0/1.0  执行路径高效，无冗余步骤
+############################################################
+```
+
+每步截图保存在：
+
+```
+running_log/server_log/os-copilot-local-eval-logs/images/{session_id}_step_{N}.jpeg
+```
+
+### 6.5 Judge 判定逻辑
+
+Judge 采用分级策略，按开销从低到高依次处理：
+
+1. **0 次 LLM**：ABORT、return_val 含失败关键词、要求滑动但无 SLIDE → 直接 fail
+2. **1 次 LLM（文本模式）**：COMPLETE 但无截图 → 纯文本判定
+3. **1 次 LLM（视觉模式）**：COMPLETE + 有截图 → 全量 VLM，截图与返回值交叉核验
+
+Judge 模型调用失败时自动重试最多 3 次，全部失败则以 `stop_reason` 兜底。
+

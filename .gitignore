@@ -1,5 +1,6 @@
 config.yaml
 */*.pyc
+**/__pycache__/
 tmp_screenshot
 output/
 running_log
