@@ -173,37 +173,34 @@ def ask_llm_anything(model_provider, model_name, messages, args= {
     print("llm ask id:", completion.id)
 
     # Some providers return reasoning content in a dedicated field.
-
-    # print(completion.choices[0].message.reasoning, flush=True)
-    # input()
+    # We log it for debugging but do NOT prepend it to the result.
+    # Prepending reasoning_content as a <think> block causes issues when the
+    # model's content already contains <THINK> tags (required by the parser prompt),
+    # resulting in two layers of THINK tags that confuse str2action().
+    # The parser only needs the model's content output, which already follows
+    # the <THINK>...</THINK>\texplain:...\taction:...\tsummary:... format.
 
     llm_content = completion.choices[0].message.content
     result = llm_content
     if llm_content is None or len(llm_content) == 0:
         llm_content = ""
+        result = ""
         print(f"Warning: LLM {model_name} returned empty content.", flush=True)
     
+    reasoning_debug = None
     try:
-        reasoning = completion.choices[0].message.reasoning_content
-        if reasoning is not None and len(reasoning) > 0:
-            result = "<think>" + reasoning + "</think>" + "\n" + llm_content
+        reasoning_debug = completion.choices[0].message.reasoning_content
     except Exception:
-        # for common llm that doesn't have reasoning_content field
-        # print(f"LLM {model_name} does not have reasoning_content field, skipping.", flush=True)
         pass
+    if reasoning_debug is None:
+        try:
+            reasoning_debug = completion.choices[0].message.reasoning
+        except Exception:
+            pass
 
-    try:
-        reasoning = completion.choices[0].message.reasoning
-        if reasoning is not None and len(reasoning) > 0:
-            result = "<think>" + reasoning + "</think>" + "\n" + llm_content
-        else:
-            raise AttributeError("No reasoning content field found")
-    except Exception as e:
-        # for common llm that doesn't have reasoning_content field
-        # print(f"LLM {model_name} does not have reasoning field, skipping.", flush=True)
-        pass
-
-    if not result.startswith("<think>") :
+    if reasoning_debug and len(reasoning_debug) > 0:
+        print(f"[Reasoning] {reasoning_debug[:200]}...", flush=True)
+    else:
         print(f"Warning: LLM {model_name} returned response without reasoning content.", flush=True)
 
 
