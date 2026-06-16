@@ -265,11 +265,23 @@ class Parser0920Summary():
         
         # Extract CoT and key-value parts
         # Expected format: <THINK> cot </THINK>\nexplain:xxx\taction:xx\tvalue:xxx\tsummary:xxx
+        # Note: Some models (e.g. step-3.7-flash via Chat Completions API) may output
+        # multiple THINK blocks (reasoning_content wrapped as <think> + model's own <THINK>).
+        # We take the LAST </THINK> as the boundary so kv_part always starts after all THINK blocks.
         try:
-            cot_part = command_str.split("<THINK>")[1].split("</THINK>")[0].strip()
-            kv_part = command_str.split("</THINK>")[1].strip()
-        except IndexError:
-            print(f"[Parser Warning] Missing <THINK> tags, treating entire response as kv")
+            think_ends = list(re.finditer(r"</THINK>", command_str, flags=re.IGNORECASE))
+            if think_ends:
+                think_starts = list(re.finditer(r"<THINK>", command_str, flags=re.IGNORECASE))
+                if think_starts:
+                    cot_part = command_str[think_starts[0].end():think_ends[0].start()].strip()
+                else:
+                    cot_part = ""
+                kv_part = command_str[think_ends[-1].end():].strip()
+            else:
+                kv_part = command_str
+                cot_part = ""
+        except Exception:
+            print(f"[Parser Warning] THINK tag parsing issue, treating entire response as kv")
             kv_part = command_str
             cot_part = ""
 
