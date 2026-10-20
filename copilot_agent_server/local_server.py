@@ -11,6 +11,7 @@ from tools.image_tools import read_from_url, make_b64_url
 from copilot_agent_server.parser_factory import get_parser
 
 from tools.ask_llm_v2 import ask_llm_anything
+from copilot_tools.web_search import ask_with_web_search, resolve_search_config
 
 from copy import deepcopy
 
@@ -60,6 +61,9 @@ class LocalServer(BaseCopilotServer):
             "task": payload["task"],
             "task_type": payload["task_type"],
             "model_config": payload["model_config"],
+            "web_search_config": resolve_search_config(
+                self.server_config.get("web_search"), payload.get("web_search")
+            ),
 
             "extra_info": extra_info
         }
@@ -176,16 +180,23 @@ class LocalServer(BaseCopilotServer):
 
         
         llm_start_time = time.time()
-        response = ask_llm_anything(
-            model_provider=model_provider,
-            model_name=model_name,
+        response, action, web_search, asked_messages = ask_with_web_search(
+            parser=parser,
             messages=messages_to_ask,
-            args=args
+            ask_model=lambda messages: ask_llm_anything(
+                model_provider=model_provider,
+                model_name=model_name,
+                messages=messages,
+                args=args,
+            ),
+            config=resolve_search_config(
+                self.server_config.get("web_search"), config_dict.get("web_search_config")
+            ),
+            session_id=session_id,
+            model_name=model_name,
+            logs=logs,
         )
         llm_end_time = time.time()
-
-        action = parser.str2action(response)
-
 
         log_message = {
             "environment": current_env,
@@ -194,6 +205,7 @@ class LocalServer(BaseCopilotServer):
             "asked_messages": asked_messages,
             "model_response": response,
             "model_config": model_config,
+            "web_search": web_search,
 
 
             "llm_cost": {
@@ -210,4 +222,3 @@ class LocalServer(BaseCopilotServer):
             "current_step": current_ste + 1
         }
         
-    

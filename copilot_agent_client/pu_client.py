@@ -107,6 +107,7 @@ def evaluate_task_on_device(agent_server, device_info, task, rollout_config, ext
         "task": task,
         "task_type": task_type,
         "model_config": rollout_config['model_config'],
+        "web_search": rollout_config.get("web_search"),
         "extra_info": extra_info
         
     })

@@ -458,6 +458,46 @@ pip install -r requirements.txt
 python examples/run_single_task_state_compress.py
 ```
 
+#### Web search during a task
+
+Both local servers can use [Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp)
+to find current public information and read web pages before choosing the next
+phone action. Search uses Fast mode and needs no Parallel account or API key.
+For example, ask for current sci-fi movie recommendations and then have the
+agent open an app. Requests happen only when the model emits a `WEB_SEARCH`
+or `WEB_FETCH` action; support depends on the model following these additional
+instructions. App-specific searches still use the phone, and `INFO` still asks
+the user for clarification.
+
+Search is available by default when no search settings exist. It sends the
+model's search query or requested public URL, model name and an opaque task ID
+to Parallel. Results, including source URLs and errors, are kept separately in
+the task log and supplied to subsequent model calls. No model API credentials
+are forwarded. The anonymous service has usage limits; failures are returned to
+the model as errors rather than silently switching providers.
+
+For fully local operation, disable web search **before starting a task**. In
+`mcp_server_config.yaml`, uncomment this entry in the existing `server_config`
+mapping:
+
+```yaml
+"web_search": {"enabled": False},
+```
+
+For standalone Python callers, put `"web_search": False` in the server config or
+rollout config. Rollout settings override server defaults and are saved with the
+session. A server setting of `"web_search": {"allow_network": False}` denies
+network access even if a rollout enables search. Existing sessions keep their
+saved settings; a current server network denial also applies to resumed sessions.
+
+The settings mapping also accepts `provider: parallel`, `timeout` (seconds,
+default 20, covering discovery and each tool call), and `max_calls` (default 4
+per GUI step). Unsupported provider names fail explicitly. Host actions use
+the existing tab-separated action format with `action:WEB_SEARCH` and
+`value:a concise query`, or `action:WEB_FETCH` and `value:https://example.org/`.
+They are handled inside inference and never sent to ADB. Turning search off
+preserves the original model prompt and device action path.
+
 ### (Optional) Step 4: Trajectory Visualization Environment Setup
 
 The trajectory will be defult saved in the `running_log/server_log/os-copilot-local-eval-logs/` directory. You can visualize the trajectory using streamlit:

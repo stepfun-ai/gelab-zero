@@ -422,6 +422,31 @@ pip install -r requirements.txt
 python examples/run_single_task_state_compress.py
 ```
 
+#### 任务中的网页搜索
+
+两个本地服务均可在选择下一步手机操作前，通过
+[Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp)
+搜索最新公开信息和读取网页。搜索使用 Fast 模式，无需 Parallel 账号或 API Key。
+未配置搜索时默认可用；只有模型输出 `WEB_SEARCH` 或 `WEB_FETCH` 动作才会发起请求，
+实际效果取决于模型遵循新增动作指令的能力。指定 App 内的搜索仍通过手机完成，
+`INFO` 仍用于向用户提问。
+
+查询或公开网页 URL、模型名称及不透明任务 ID 会发送给 Parallel；模型 API 凭据不会转发。
+结果、来源链接和错误单独保存在任务日志中，并供后续推理使用。匿名服务有用量限制，
+失败会作为错误返回模型，不会自动切换服务商。
+
+如需完全本地运行，请在开始任务前，取消 `mcp_server_config.yaml` 的 `server_config`
+中 `"web_search": {"enabled": False},` 一行的注释。独立 Python 调用可在 server config 或 rollout
+config 中设置 `"web_search": False`。rollout 设置覆盖默认值并保存到会话；服务端
+`"web_search": {"allow_network": False}` 始终禁止网络，即使会话启用了搜索。
+已有会话保留其保存的设置，服务端当前的网络禁止规则也适用于恢复的会话。
+
+设置字典还支持 `provider: parallel`、`timeout`（秒，默认 20，覆盖发现和单次工具调用）
+和 `max_calls`（每个 GUI 步骤最多调用次数，默认 4）。不支持的服务商名称会明确报错。
+新增动作沿用制表符分隔格式：`action:WEB_SEARCH` 和 `value:简短查询`，或
+`action:WEB_FETCH` 和 `value:https://example.org/`。这些动作在推理服务内部处理，
+不会发送到 ADB；关闭搜索会保留原有提示词和设备操作路径。
+
 ### （可选）Step 4: 轨迹可视化环境搭建
 
 任务轨迹会默认保存在 `running_log/server_log/os-copilot-local-eval-logs/` 目录下。你可以使用 streamlit 对轨迹进行可视化：

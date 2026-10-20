@@ -10,6 +10,7 @@ from copilot_agent_server.parser_factory import get_parser
 from copilot_front_end.pu_frontend_executor import uiTars_to_frontend_action
 from tools.ask_llm_v2 import ask_llm_anything
 from tools.image_tools import make_b64_url, read_from_url
+from copilot_tools.web_search import WebSearchError, ask_with_web_search, resolve_search_config
 
 
 class LocalStateCompressServer(BaseCopilotServer):
@@ -62,6 +63,9 @@ class LocalStateCompressServer(BaseCopilotServer):
                 "task": payload["task"],
                 "task_type": rollout_config["task_type"],
                 "model_config": rollout_config["model_config"],
+                "web_search_config": resolve_search_config(
+                    self.server_config.get("web_search"), payload.get("web_search")
+                ),
                 "rollout_config": rollout_config,
                 "skill": skill,
                 "config": config,
@@ -601,19 +605,35 @@ last_effective_state:
 
         for retry_idx in range(DEFAULT_MAX_RETRY):
             try:
-                response = ask_llm_anything(
-                    model_provider=model_provider,
-                    model_name=model_name,
+                response, action, web_search, asked_messages = ask_with_web_search(
+                    parser=parser,
                     messages=messages_to_ask,
-                    args=args,
-                    resize_config=model_config.get("resize_config", None),
+                    ask_model=lambda messages: ask_llm_anything(
+                        model_provider=model_provider,
+                        model_name=model_name,
+                        messages=messages,
+                        args=args,
+                        resize_config=model_config.get("resize_config", None),
+                    ),
+                    config=resolve_search_config(
+                        self.server_config.get("web_search"), config_dict.get("web_search_config")
+                    ),
+                    session_id=session_id,
+                    model_name=model_name,
+                    logs=logs,
                 )
-                action = parser.str2action(response)
                 # assert (
                 #     action["action"] != "CALL_USER"
                 # ), "If the model responds with CALL_USER, it means the model cannot understand the current situation and needs to ask for user's help. Please check the model response and adjust the prompt or provide more information to the model."
-                action = uiTars_to_frontend_action(action)
+                try:
+                    action = uiTars_to_frontend_action(action)
+                except Exception as exc:
+                    if web_search:
+                        raise WebSearchError("Invalid device action after web research") from exc
+                    raise
                 break
+            except WebSearchError:
+                raise
             except Exception as exc:
                 print(f"Error when asking LLM: {exc}")
                 if retry_idx == DEFAULT_MAX_RETRY - 1:
@@ -640,6 +660,7 @@ last_effective_state:
             "asked_messages": asked_messages,
             "model_response": response,
             "model_config": model_config,
+            "web_search": web_search,
             "state_context": state_context,
             "llm_cost": {
                 "llm_time": llm_end_time - llm_start_time,

@@ -83,6 +83,8 @@ agent_loop_config: {
 
 server_config : {
     "mcp_server_port": 8704,
+    # Uncomment to keep task execution fully local (no web research).
+    # "web_search": {"enabled": False},
     "log_dir": "running_log/server_log/os-copilot-local-eval-logs/traces",
     "image_dir": "running_log/server_log/os-copilot-local-eval-logs/images",
     "debug": False

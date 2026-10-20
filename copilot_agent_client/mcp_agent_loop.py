@@ -207,6 +207,7 @@ def gui_agent_loop(
             "task": task,
             "task_type": task_type,
             "model_config": agent_loop_config['model_config'],
+            "web_search": agent_loop_config.get("web_search"),
             "extra_info": extra_info  
         })
 
